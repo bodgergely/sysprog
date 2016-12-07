@@ -1,5 +1,6 @@
 #include "remap.h"
 #include <sys/mman.h>
+#include <errno.h>
 
 #define PAGE_SIZE 4096
 #define HUGE_PAGE_SIZE (1 << 21)
@@ -34,14 +35,14 @@ void remap_text_section(const uint8_t* start_text, const uint8_t* end_text)
 
 	if(temp_text_address == MAP_FAILED)
 	{
-		printf("remap failed!\n");
+		printf("remap failed!, errno: %d\n", errno);
 		exit(-1);
 	}
 
 	void* original_text_address = mmap((uint8_t*)start_text, len, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE|MAP_NORESERVE|MAP_POPULATE,-1,0);
 	if(original_text_address == MAP_FAILED)
 	{
-		printf("original_text_address map failed!\n");
+		printf("original_text_address map failed!, errno: %d\n", errno);
 		exit(-1);
 	}
 
@@ -53,14 +54,14 @@ void remap_text_section(const uint8_t* start_text, const uint8_t* end_text)
 
 	if(mprotect(original_text_address, len, PROT_READ|PROT_EXEC)!=0)
 	{
-		printf("mprotect failed!\n");
+		printf("mprotect failed!, errno: %d\n", errno);
 		exit(-1);
 	}
 
 
 	if(munmap(temp_text_address, len)!=0)
 	{
-		printf("unmap failed!\n");
+		printf("unmap failed!, errno: %d\n", errno);
 		exit(-1);
 	}
 
