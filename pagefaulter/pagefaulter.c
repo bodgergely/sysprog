@@ -5,16 +5,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #define PAGE_SIZE 4096
 
-#define FLAGS_PRIVATE MAP_PRIVATE|MAP_ANONYMOUS
-#define FLAGS_SHARED  MAP_SHARED|MAP_ANONYMOUS
-#define FLAGS_ALL     MAP_SHARED|MAP_LOCKED|MAP_POPULATE|MAP_ANONYMOUS
 
-void* mmapPages(int count)
+void* mmapPages(int count, int fd, int flags)
 {
-	return mmap(NULL, count * PAGE_SIZE, PROT_READ|PROT_WRITE, FLAGS_SHARED, -1, 0);
+	return mmap(NULL, count * PAGE_SIZE, PROT_READ|PROT_WRITE, flags, fd, 0);
 }
 
 void read(char* mem, int pageCount, char* out)
@@ -57,24 +55,36 @@ void init()
 	memset(&prevUsage, 0, sizeof(prevUsage));
 }
 
+#define FLAGS_ALL MAP_SHARED|MAP_LOCKED|MAP_POPULATE|MAP_ANONYMOUS
+
 int main(int argc, char** argv)
 {
 	init();
 	const int pageCount = 4;
-	printStats();
-	char* mem = (char*)mmapPages(pageCount);
+	char buff[pageCount];
+	buff[1] = 1;
+	int fd = open("memmapfile", O_RDWR);
+	if(fd == -1)
+	{
+		printf("Failed to open file. errno: %d\n", errno);
+	}
+	printStats("Upon start.");
+	char* mem = (char*)mmapPages(pageCount, fd, MAP_SHARED|MAP_POPULATE);
 	if((void*)mem == -1)
 	{
 		printf("Failed to acquite mem. Errno: %d\n", errno);
 		exit(-1);
 	}
 	printf("Mem at: %p\n", mem);
-	char buff[pageCount];
-	printStats();
+
+	printStats("After mmap");
 	read(mem, pageCount, buff);
-	printStats();
+	printStats("After read");
 	write(mem, pageCount, 'A');
-	printStats();
+	printStats("After write");
+	msync(mem, pageCount*PAGE_SIZE, MS_SYNC);
+	write(mem, pageCount, 'A');
+	printStats("After write 2");
 
 	return 0;
 }
